@@ -8,6 +8,9 @@ defaults:
   run:
     working-directory: D7Island
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -71,3 +74,11 @@ jobs:
         with:
           name: D7Island-deb
           path: D7Island/*.deb
+
+      - name: Publish deb to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: island-${{ github.run_number }}
+          name: D7Island deb ${{ github.run_number }}
+          body: Built from ${{ github.sha }} with clang + dpkg-deb.
+          files: D7Island/*.deb
