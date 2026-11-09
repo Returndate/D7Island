@@ -1,13 +1,11 @@
 //
-//  D7Island.m — iPhone 14 Pro 尺寸的假灵动岛，iPhone 7 / iOS 15 / palera1n rootless
-//  纯 Objective-C，不依赖 Logos；theos 用 tweak.mk 直接吃 .m 即可。
-//
-//  尺寸 1:1 照搬 iPhone 14 Pro（基准屏 393x852pt / 1179x2556@3x）：
-//    折叠  126 x 37  @ y=11  全圆角 r=18.5（标准胶囊）
-//    展开  371 x 88  @ y=11  全圆角 r=30，左右各留 11pt
-//  iPhone 7 屏宽 375pt，展开宽按 11pt 边距等比换算为 353：
-//    折叠  126 x 37  @ y=11
-//    展开  353 x 88  @ y=11
+//  D7Island.m 鈥?iPhone 14 Pro 灏哄鐨勫亣鐏靛姩宀涳紝iPhone 7 / iOS 15 / palera1n rootless
+//  绾?Objective-C锛屼笉渚濊禆 Logos锛泃heos 鐢?tweak.mk 鐩存帴鍚?.m 鍗冲彲銆?//
+//  灏哄 1:1 鐓ф惉 iPhone 14 Pro锛堝熀鍑嗗睆 393x852pt / 1179x2556@3x锛夛細
+//    鎶樺彔  126 x 37  @ y=11  鍏ㄥ渾瑙?r=18.5锛堟爣鍑嗚兌鍥婏級
+//    灞曞紑  371 x 88  @ y=11  鍏ㄥ渾瑙?r=30锛屽乏鍙冲悇鐣?11pt
+//  iPhone 7 灞忓 375pt锛屽睍寮€瀹芥寜 11pt 杈硅窛绛夋瘮鎹㈢畻涓?353锛?//    鎶樺彔  126 x 37  @ y=11
+//    灞曞紑  353 x 88  @ y=11
 //
 
 #import <UIKit/UIKit.h>
@@ -35,7 +33,7 @@ static BOOL         sOpen;
 static int          sGen;
 static CGRect       sHit;
 
-// MediaRemote 私有 API（dlsym 取符号，不链接私有框架，避免 SDK 里没有 stub 时编译失败）
+// MediaRemote 绉佹湁 API锛坉lsym 鍙栫鍙凤紝涓嶉摼鎺ョ鏈夋鏋讹紝閬垮厤 SDK 閲屾病鏈?stub 鏃剁紪璇戝け璐ワ級
 typedef void (^D7MRInfoBlock)(CFDictionaryRef info);
 typedef void (^D7MRPlayBlock)(Boolean playing);
 static void (*sMRGetInfo)(dispatch_queue_t, D7MRInfoBlock);
@@ -49,7 +47,7 @@ static UIImage  *sNowArt;
 @end
 
 @implementation D7Win
-// 只有岛体内接收触摸，其余全部穿透给下面的 App / 桌面
+// 鍙湁宀涗綋鍐呮帴鏀惰Е鎽革紝鍏朵綑鍏ㄩ儴绌块€忕粰涓嬮潰鐨?App / 妗岄潰
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
     return CGRectContainsPoint(sHit, point);
 }
@@ -78,7 +76,7 @@ static void d7Render(void) {
         sArt.image  = sNowArt;
     } else {
         sTitle.text = [fmt stringFromDate:[NSDate date]];
-        sSub.text   = [NSString stringWithFormat:@"电量 %.0f%%",
+        sSub.text   = [NSString stringWithFormat:@"鐢甸噺 %.0f%%",
                        MAX(0.0, UIDevice.currentDevice.batteryLevel * 100.0)];
         sArt.image  = nil;
     }
@@ -91,7 +89,7 @@ static void d7Poll(void) {
             d7Render();
         });
     } else {
-        // 兜底：SpringBoard 里这条通常取不到值，取不到就按"未播放"处理
+        // 鍏滃簳锛歋pringBoard 閲岃繖鏉￠€氬父鍙栦笉鍒板€硷紝鍙栦笉鍒板氨鎸?鏈挱鏀?澶勭悊
         NSDictionary *np = [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo;
         sPlaying = (np && [[np objectForKey:MPNowPlayingInfoPropertyPlaybackRate] doubleValue] > 0.0);
         sNowTitle  = [np objectForKey:MPMediaItemPropertyTitle];
@@ -114,12 +112,7 @@ static void d7Poll(void) {
 }
 
 static void d7SetOpen(BOOL open, BOOL haptic) {
-    if (haptic) {
-        UIImpactFeedbackGenerator *h =
-            [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
-        [h prepare];
-        [h impactOccurred];
-    }
+    (void)haptic;   /* 瑙︽劅宸插叧闂細涓嶉渿鍔ㄣ€佷笉鍙戝０锛屽彧鏈夎瑙夊姩鐢?*/
     sOpen = open;
     sGen++;
     int me = sGen;
@@ -163,8 +156,7 @@ static void d7Start(void) {
         if (sc.activationState == UISceneActivationStateForegroundActive) { scene = sc; break; }
     }
     if (!scene) {
-        // 启动早期 scene 还没激活，每 0.5s 重试一次，最多 40 次
-        static int tries = 0;
+        // 鍚姩鏃╂湡 scene 杩樻病婵€娲伙紝姣?0.5s 閲嶈瘯涓€娆★紝鏈€澶?40 娆?        static int tries = 0;
         if (tries++ < 40) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)),
                            dispatch_get_main_queue(), ^{ d7Start(); });
@@ -231,7 +223,7 @@ static void d7Start(void) {
     [root.view addSubview:sIsland];
 
     sHit = sIsland.frame;
-    sWin.hidden = NO;                 // 严禁 makeKeyAndVisible
+    sWin.hidden = NO;                 // 涓ョ makeKeyAndVisible
 
     [UIDevice currentDevice].batteryMonitoringEnabled = YES;
     d7Render();
