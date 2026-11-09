@@ -31,8 +31,9 @@ jobs:
         run: |
           git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/sdks
           cd /tmp/sdks && git sparse-checkout set iPhoneOS15.6.sdk
-          echo "SDK=/tmp/sdks/iPhoneOS15.6.sdk" >> "$GITHUB_ENV"
-          ls "$SDK"
+          SDK_DIR=/tmp/sdks/iPhoneOS15.6.sdk
+          echo "SDK=$SDK_DIR" >> "$GITHUB_ENV"
+          ls "$SDK_DIR"
 
       - name: Compile dylib
         run: |
