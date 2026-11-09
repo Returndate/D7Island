@@ -1,11 +1,19 @@
 //
-//  D7Island.m 鈥?iPhone 14 Pro 灏哄鐨勫亣鐏靛姩宀涳紝iPhone 7 / iOS 15 / palera1n rootless
-//  绾?Objective-C锛屼笉渚濊禆 Logos锛泃heos 鐢?tweak.mk 鐩存帴鍚?.m 鍗冲彲銆?//
-//  灏哄 1:1 鐓ф惉 iPhone 14 Pro锛堝熀鍑嗗睆 393x852pt / 1179x2556@3x锛夛細
-//    鎶樺彔  126 x 37  @ y=11  鍏ㄥ渾瑙?r=18.5锛堟爣鍑嗚兌鍥婏級
-//    灞曞紑  371 x 88  @ y=11  鍏ㄥ渾瑙?r=30锛屽乏鍙冲悇鐣?11pt
-//  iPhone 7 灞忓 375pt锛屽睍寮€瀹芥寜 11pt 杈硅窛绛夋瘮鎹㈢畻涓?353锛?//    鎶樺彔  126 x 37  @ y=11
-//    灞曞紑  353 x 88  @ y=11
+//  D7Island.m - fake Dynamic Island sized like iPhone 14 Pro.
+//  Target: iPhone 7 (iPhone9,1, arm64), iOS 15.x, palera1n rootless jailbreak.
+//  Pure Objective-C, no Logos. Compiles with clang + iPhoneOS SDK.
+//
+//  Sizes copied 1:1 from iPhone 14 Pro (base screen 393x852pt / 1179x2556@3x):
+//    collapsed  126 x 37 @ y=11  corner radius 18.5
+//    expanded   371 x 88 @ y=11  corner radius 30, 11pt side margins
+//  iPhone 7 screen is 375pt wide, so expanded width becomes 375 - 22 = 353:
+//    collapsed  126 x 37 @ y=11
+//    expanded   353 x 88 @ y=11
+//
+//  This file is intentionally ASCII-only: the GitHub web editor mangles
+//  multi-byte text on paste, so every comment and string is plain ASCII.
+//  The battery label uses \u7535\u91cc escapes for the Chinese label if wanted;
+//  here we keep it ASCII ("BAT") to stay safe.
 //
 
 #import <UIKit/UIKit.h>
@@ -33,7 +41,8 @@ static BOOL         sOpen;
 static int          sGen;
 static CGRect       sHit;
 
-// MediaRemote 绉佹湁 API锛坉lsym 鍙栫鍙凤紝涓嶉摼鎺ョ鏈夋鏋讹紝閬垮厤 SDK 閲屾病鏈?stub 鏃剁紪璇戝け璐ワ級
+// MediaRemote private API, resolved with dlsym so we never link the
+// private framework (no stubs in the public SDK).
 typedef void (^D7MRInfoBlock)(CFDictionaryRef info);
 typedef void (^D7MRPlayBlock)(Boolean playing);
 static void (*sMRGetInfo)(dispatch_queue_t, D7MRInfoBlock);
@@ -47,7 +56,8 @@ static UIImage  *sNowArt;
 @end
 
 @implementation D7Win
-// 鍙湁宀涗綋鍐呮帴鏀惰Е鎽革紝鍏朵綑鍏ㄩ儴绌块€忕粰涓嬮潰鐨?App / 妗岄潰
+// Only the island rect takes touches; everything else falls through
+// to the app / home screen underneath.
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
     return CGRectContainsPoint(sHit, point);
 }
@@ -76,7 +86,7 @@ static void d7Render(void) {
         sArt.image  = sNowArt;
     } else {
         sTitle.text = [fmt stringFromDate:[NSDate date]];
-        sSub.text   = [NSString stringWithFormat:@"鐢甸噺 %.0f%%",
+        sSub.text   = [NSString stringWithFormat:@"BAT %.0f%%",
                        MAX(0.0, UIDevice.currentDevice.batteryLevel * 100.0)];
         sArt.image  = nil;
     }
@@ -89,7 +99,8 @@ static void d7Poll(void) {
             d7Render();
         });
     } else {
-        // 鍏滃簳锛歋pringBoard 閲岃繖鏉￠€氬父鍙栦笉鍒板€硷紝鍙栦笉鍒板氨鎸?鏈挱鏀?澶勭悊
+        // Fallback: inside SpringBoard this normally has no value, so treat
+        // a missing value as "not playing".
         NSDictionary *np = [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo;
         sPlaying = (np && [[np objectForKey:MPNowPlayingInfoPropertyPlaybackRate] doubleValue] > 0.0);
         sNowTitle  = [np objectForKey:MPMediaItemPropertyTitle];
@@ -111,8 +122,9 @@ static void d7Poll(void) {
     });
 }
 
+// Haptics removed on request: only the visual spring animation happens now.
 static void d7SetOpen(BOOL open, BOOL haptic) {
-    (void)haptic;   /* 瑙︽劅宸插叧闂細涓嶉渿鍔ㄣ€佷笉鍙戝０锛屽彧鏈夎瑙夊姩鐢?*/
+    (void)haptic;
     sOpen = open;
     sGen++;
     int me = sGen;
@@ -156,7 +168,9 @@ static void d7Start(void) {
         if (sc.activationState == UISceneActivationStateForegroundActive) { scene = sc; break; }
     }
     if (!scene) {
-        // 鍚姩鏃╂湡 scene 杩樻病婵€娲伙紝姣?0.5s 閲嶈瘯涓€娆★紝鏈€澶?40 娆?        static int tries = 0;
+        // The scene is not active yet during early boot: retry every 0.5s,
+        // at most 40 times (about 20s), then give up.
+        static int tries = 0;
         if (tries++ < 40) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)),
                            dispatch_get_main_queue(), ^{ d7Start(); });
@@ -223,7 +237,7 @@ static void d7Start(void) {
     [root.view addSubview:sIsland];
 
     sHit = sIsland.frame;
-    sWin.hidden = NO;                 // 涓ョ makeKeyAndVisible
+    sWin.hidden = NO;                 // never call makeKeyAndVisible
 
     [UIDevice currentDevice].batteryMonitoringEnabled = YES;
     d7Render();
