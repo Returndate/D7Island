@@ -17,7 +17,7 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y make git cmake libssl-dev libxml2-dev libplist-dev pkg-config
+          sudo apt-get install -y make git cmake libssl-dev libxml2-dev libplist-dev pkg-config clang lld dpkg-dev
 
       - name: Build ldid
         run: |
@@ -25,25 +25,48 @@ jobs:
           cd /tmp/ldid
           make -j"$(nproc)"
           sudo install -m 755 ldid /usr/local/bin/ldid
-          which ldid
-
-      - name: Fetch Theos
-        run: |
-          git clone --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
-          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          ldid -v || true
 
       - name: Fetch iOS 15.6 SDK
         run: |
           git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/sdks
           cd /tmp/sdks && git sparse-checkout set iPhoneOS15.6.sdk
-          mkdir -p "$HOME/theos/sdks"
-          cp -R /tmp/sdks/iPhoneOS15.6.sdk "$HOME/theos/sdks/"
-          ls "$HOME/theos/sdks"
+          echo "SDK=/tmp/sdks/iPhoneOS15.6.sdk" >> "$GITHUB_ENV"
+          ls "$SDK"
 
-      - name: Build package
-        run: make package FINALPACKAGE=1
+      - name: Compile dylib
+        run: |
+          clang -target arm64-apple-ios15.0 -isysroot "$SDK" -fuse-ld=lld \
+            -dynamiclib -O2 -fobjc-arc -Wno-deprecated-declarations \
+            -install_name /var/jb/Library/MobileSubstrate/DynamicLibraries/D7Island.dylib \
+            -framework UIKit -framework MediaPlayer -framework Foundation \
+            -Wl,-undefined,dynamic_lookup \
+            -o D7Island.dylib src/D7Island.m
+          file D7Island.dylib
+          ldid -S D7Island.dylib
+
+      - name: Package deb
+        run: |
+          rm -rf pkg
+          mkdir -p pkg/DEBIAN pkg/var/jb/Library/MobileSubstrate/DynamicLibraries
+          cp D7Island.dylib pkg/var/jb/Library/MobileSubstrate/DynamicLibraries/
+          cp D7Island.plist pkg/var/jb/Library/MobileSubstrate/DynamicLibraries/
+          printf '%s\n' \
+            'Package: com.d7.island' \
+            'Name: D7Island' \
+            'Version: 1.0' \
+            'Architecture: iphoneos-arm64' \
+            'Description: Fake Dynamic Island overlay for iPhone 7 on iOS 15' \
+            'Maintainer: Returndate' \
+            'Author: Returndate' \
+            'Section: Tweaks' \
+            'Depends: firmware (>= 15.0)' \
+            > pkg/DEBIAN/control
+          dpkg-deb -Z gzip --root-owner-group --build pkg com.d7.island_1.0_iphoneos-arm64.deb
+          ls -l ./*.deb
+          dpkg-deb -c com.d7.island_1.0_iphoneos-arm64.deb
 
       - uses: actions/upload-artifact@v4
         with:
           name: D7Island-deb
-          path: D7Island/packages/*.deb
+          path: D7Island/*.deb
