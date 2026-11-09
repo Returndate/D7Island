@@ -1,0 +1,10 @@
+Package: com.d7.island
+Name: D7Island
+Version: 1.0
+Architecture: iphoneos-arm64
+Description: iPhone 14 Pro 尺寸的假灵动岛（126x37 折叠 / 353x88 展开），适配 iPhone 7 + iOS 15 无根越狱
+Maintainer: d7
+Author: d7
+Section: Tweaks
+Depends: firmware (>= 15.0)
+Tag: purpose::extension
