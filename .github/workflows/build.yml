@@ -1,0 +1,41 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: D7Island
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make git ldid
+
+      - name: Fetch Theos
+        run: |
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: Fetch iOS 15.6 SDK
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/sdks
+          cd /tmp/sdks && git sparse-checkout set iPhoneOS15.6.sdk
+          mkdir -p "$HOME/theos/sdks"
+          cp -R /tmp/sdks/iPhoneOS15.6.sdk "$HOME/theos/sdks/"
+          ls "$HOME/theos/sdks"
+
+      - name: Build package
+        run: make package FINALPACKAGE=1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: D7Island-deb
+          path: D7Island/packages/*.deb
